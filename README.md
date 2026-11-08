@@ -69,7 +69,7 @@ Creator-only (JWT bearer token required):
 
 - `GET /api/contents?all=true`
 - `POST /api/contents`
-- `POST /api/media/upload` (upload up to 10 device files, maximum 12 MB each)
+- `POST /api/media/upload` (upload one device file at a time, maximum 3 MB)
 - `PUT /api/contents/:id`
 - `DELETE /api/contents/:id`
 - `GET /api/comments`
@@ -77,7 +77,7 @@ Creator-only (JWT bearer token required):
 - `DELETE /api/comments/:id`
 - `GET /api/dashboard/stats`
 
-Creators can upload up to 10 photos/videos/audio files with each content item from their device (12 MB per file); files are stored in MongoDB so they persist with the application data. Each creator can also save a profile name, bio, and uploaded profile picture from the dashboard; public posts show the creator name, profile picture, and publication time. Comments are submitted as pending and are only shown publicly after creator approval. Scheduled content is published automatically when its scheduled time arrives.
+Creators can upload one photo/video/audio file at a time from their device (3 MB maximum); files are stored in MongoDB so they persist with the application data. Each creator can also save a profile name, bio, and uploaded profile picture from the dashboard; public posts show the creator name, profile picture, and publication time. Comments are submitted as pending and are only shown publicly after creator approval. Scheduled content is published when the public content API is requested after its scheduled time.
 
 Viewers can open a creator profile from a post or the navigation profile chip. The public profile displays the creator's profile details, published posts, and each post's likes and approved-comment count; opening a post provides the like and comment actions.
 
@@ -99,8 +99,12 @@ node --check server.js
 
 ## Deployment
 
-Deploy the backend folder as a Node web service (for example on Render), with build command `npm install` and start command `npm start`. Configure `MONGODB_URI`, a strong persistent `JWT_SECRET`, `NODE_ENV=production`, `PORT` (if required by the host), and `FRONTEND_URL` with the deployed frontend origin. For multiple frontend domains, `FRONTEND_URL` accepts comma-separated origins.
+Deploy the repository root to Vercel on the Hobby plan. `vercel.json` installs both frontend and backend dependencies, builds the React app, and serves the Express API through `api/[...path].js`. Configure these server-side Vercel environment variables:
 
-Deploy the React project root (for example to Vercel or Netlify), with build command `npm run build`, publish directory `build`, and `REACT_APP_API_URL` set to the deployed API base URL ending in `/api`. Configure the host to rewrite unknown routes to `index.html` so React Router routes load on refresh.
+- `MONGODB_URI`: the MongoDB Atlas connection string; do not use a `REACT_APP_` prefix.
+- `JWT_SECRET`: a strong, persistent random secret.
+- `NODE_ENV`: `production`.
 
-After deployment, register a creator account through the public login page and test the public content, creator login, and moderation flows. A deployed URL and GitHub repository must be supplied separately; this project cannot publish itself without the relevant accounts and permissions.
+The React app uses same-origin `/api` requests in production, so `REACT_APP_API_URL` is not required. Vercel Hobby limits function request/response payloads; media uploads are therefore limited to one file up to 3 MB at a time. Scheduled items become published when the public content API is requested after their scheduled time; Vercel Hobby does not run the backend's persistent minute timer.
+
+In MongoDB Atlas, configure Network Access to allow the Vercel deployment to connect. After deploying, check `/api/health`, then register a creator account and test the public content, creator login, and moderation flows.

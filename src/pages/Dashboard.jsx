@@ -57,8 +57,8 @@ export default function Dashboard() {
       setProfileMessage("Choose a JPG, PNG, WebP, or GIF profile picture.");
       return;
     }
-    if (file.size > 12 * 1024 * 1024) {
-      setProfileMessage("Profile pictures must be 12 MB or smaller.");
+    if (file.size > 3 * 1024 * 1024) {
+      setProfileMessage("Profile pictures must be 3 MB or smaller.");
       return;
     }
     setProfileFile(file);

@@ -5,7 +5,7 @@ const authenticate = require("../middleware/authenticate");
 const { asyncHandler, isValidObjectId } = require("../utils/http");
 
 const router = express.Router();
-const maxFileSize = 12 * 1024 * 1024;
+const maxFileSize = 3 * 1024 * 1024;
 const allowedTypes = new Set([
     "image/jpeg",
     "image/png",
@@ -22,17 +22,17 @@ const allowedTypes = new Set([
 ]);
 const upload = multer({
     storage: multer.memoryStorage(),
-    limits: { fileSize: maxFileSize, files: 10 }
+    limits: { fileSize: maxFileSize, files: 1 }
 });
 
 router.post("/upload", authenticate, (req, res, next) => {
-    upload.array("files", 10)(req, res, error => {
+    upload.array("files", 1)(req, res, error => {
         if (!error) return next();
         if (error instanceof multer.MulterError && error.code === "LIMIT_FILE_SIZE") {
-            return res.status(413).json({ message: "Each photo or video must be 12 MB or smaller." });
+            return res.status(413).json({ message: "Each photo or media file must be 3 MB or smaller." });
         }
         if (error instanceof multer.MulterError && error.code === "LIMIT_FILE_COUNT") {
-            return res.status(400).json({ message: "Upload no more than 10 files at a time." });
+            return res.status(400).json({ message: "Upload one media file at a time." });
         }
         if (error instanceof multer.MulterError) {
             return res.status(400).json({ message: "The selected media files could not be uploaded." });

@@ -7,8 +7,7 @@ const crypto = require("crypto");
 const helmet = require("helmet");
 const { rateLimit } = require("express-rate-limit");
 const publishScheduledContent = require("./utils/publishScheduled");
-const User = require("./models/user");
-const Content = require("./models/content");
+const connectToDatabase = require("./utils/connectDatabase");
 
 require("dotenv").config({ path: path.join(__dirname, ".env") });
 
@@ -28,15 +27,21 @@ if (!process.env.JWT_SECRET) {
 }
 
 app.use(helmet());
-app.use(cors({
-    origin(origin, callback) {
-        if (!origin || process.env.NODE_ENV !== "production" || allowedOrigins.includes(origin)) {
-            return callback(null, true);
+app.use((req, res, next) => {
+    const sameOrigin = `${req.protocol}://${req.get("host")}`;
+    return cors({
+        origin(origin, callback) {
+            if (!origin || process.env.NODE_ENV !== "production" || origin === sameOrigin || allowedOrigins.includes(origin)) {
+                return callback(null, true);
+            }
+            return callback(new Error("This origin is not allowed by CORS."));
         }
-        return callback(new Error("This origin is not allowed by CORS."));
-    }
-}));
+    })(req, res, next);
+});
 app.use(express.json({ limit: "1mb" }));
+app.use((req, res, next) => {
+    connectToDatabase().then(() => next()).catch(next);
+});
 
 const authRateLimit = rateLimit({
     windowMs: 15 * 60 * 1000,
@@ -55,6 +60,9 @@ app.use("/api/likes", require("./routes/likeRoutes"));
 app.use("/api/dashboard", require("./routes/dashboardRoutes"));
 
 app.get("/health", (req, res) => {
+    res.json({ status: "ok", database: mongoose.connection.readyState === 1 ? "connected" : "disconnected" });
+});
+app.get("/api/health", (req, res) => {
     res.json({ status: "ok", database: mongoose.connection.readyState === 1 ? "connected" : "disconnected" });
 });
 
@@ -85,35 +93,8 @@ app.use((error, req, res, next) => {
 });
 
 async function startServer() {
-    const mongoUri = process.env.MONGODB_URI || process.env.MONGO_URI;
-
-    if (typeof mongoUri !== "string" || !mongoUri.trim()) {
-        throw new Error(
-            "MongoDB URI is missing. Set MONGODB_URI in backend/.env (or provide MONGO_URI)."
-        );
-    }
-
-    await mongoose.connect(mongoUri.trim());
+    await connectToDatabase();
     console.log("MongoDB connected successfully!");
-
-    const usersCollectionExists = await mongoose.connection.db
-        .listCollections({ name: User.collection.name }, { nameOnly: true })
-        .hasNext();
-    if (usersCollectionExists) {
-        const userIndexes = await User.collection.indexes();
-        const uniqueRoleIndex = userIndexes.find(index => index.name === "role_1" && index.unique);
-        if (uniqueRoleIndex) {
-            await User.collection.dropIndex(uniqueRoleIndex.name);
-        }
-    }
-
-    const firstCreator = await User.findOne().sort({ createdAt: 1, _id: 1 }).select("_id");
-    if (firstCreator) {
-        await Content.updateMany(
-            { ownerId: null },
-            { $set: { ownerId: firstCreator._id } }
-        );
-    }
 
     await publishScheduledContent();
     const scheduleTimer = setInterval(() => {
@@ -121,21 +102,23 @@ async function startServer() {
     }, 60 * 1000);
     scheduleTimer.unref();
 
-    const PORT = process.env.PORT || 5000;
-    app.listen(PORT, () => {
-        console.log(`Server running on port ${PORT}`);
+    const port = process.env.PORT || 5000;
+    app.listen(port, () => {
+        console.log(`Server running on port ${port}`);
     });
 }
 
-startServer().catch((error) => {
-    if (error.codeName === "AuthenticationFailed" || /bad auth|authentication failed/i.test(error.message)) {
-        console.error(
-            "MongoDB authentication failed. Check the MongoDB database user's username and password, confirm the authentication database (authSource), and URL-encode any reserved characters in the credentials. Do not share the connection URI."
-        );
-    } else {
-        console.error("Backend startup failed:", error.message);
-    }
-    process.exitCode = 1;
-});
+if (require.main === module) {
+    startServer().catch((error) => {
+        if (error.codeName === "AuthenticationFailed" || /bad auth|authentication failed/i.test(error.message)) {
+            console.error(
+                "MongoDB authentication failed. Check the MongoDB database user's username and password, confirm the authentication database (authSource), and URL-encode any reserved characters in the credentials. Do not share the connection URI."
+            );
+        } else {
+            console.error("Backend startup failed:", error.message);
+        }
+        process.exitCode = 1;
+    });
+}
 
 module.exports = app;

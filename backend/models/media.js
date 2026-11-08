@@ -28,7 +28,7 @@ const mediaSchema = new mongoose.Schema({
     size: {
         type: Number,
         required: true,
-        max: 12 * 1024 * 1024
+        max: 3 * 1024 * 1024
     }
 }, { timestamps: true });
 

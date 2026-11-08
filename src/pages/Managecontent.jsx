@@ -82,16 +82,16 @@ export default function ManageContent() {
   function chooseMedia(event) {
     const files = Array.from(event.target.files || []);
     event.target.value = "";
-    if (files.length > 10) {
-      setMessage("Choose no more than 10 media files.");
+    if (files.length > 1) {
+      setMessage("Upload one media file at a time.");
       return;
     }
     if (files.some(file => !/^(image\/(jpeg|png|webp|gif)|video\/(mp4|webm|quicktime)|audio\/(mpeg|mp4|wav|ogg|webm))$/.test(file.type))) {
       setMessage("Choose supported photos, videos, or audio files.");
       return;
     }
-    if (files.some(file => file.size > 12 * 1024 * 1024)) {
-      setMessage("Each media file must be 12 MB or smaller.");
+    if (files.some(file => file.size > 3 * 1024 * 1024)) {
+      setMessage("Each media file must be 3 MB or smaller.");
       return;
     }
     setMessage("");
@@ -242,7 +242,7 @@ export default function ManageContent() {
           multiple
           onChange={chooseMedia}
         />
-        <small>Choose up to 10 photos or media files, up to 12 MB each. On phones, choose from your gallery or camera when available.</small>
+        <small>Upload one photo or media file at a time, up to 3 MB. On phones, choose from your gallery or camera when available.</small>
         {mediaPreviews.length > 0 && (
           <div className="media-previews">
             {mediaPreviews.map(preview => preview.type.startsWith("image") ? (
