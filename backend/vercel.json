@@ -1,0 +1,5 @@
+{
+  "installCommand": "npm ci",
+  "buildCommand": null,
+  "outputDirectory": null
+}

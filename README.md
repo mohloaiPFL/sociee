@@ -99,12 +99,15 @@ node --check server.js
 
 ## Deployment
 
-Deploy the repository root to Vercel on the Hobby plan. `vercel.json` installs both frontend and backend dependencies, builds the React app, and serves the Express API through `api/[...path].js`. Configure these server-side Vercel environment variables:
+Deploy the frontend and backend as separate Vercel projects from the same repository. For the frontend project, use the repository root, build command `npm run build`, and output directory `build`. Set `REACT_APP_API_URL` to the backend project's URL ending in `/api`.
+
+For the backend project, set the Root Directory to `backend` and leave the build command and output directory at their defaults so Vercel detects the Express app. Set these Production environment variables on the backend project:
 
 - `MONGODB_URI`: the MongoDB Atlas connection string; do not use a `REACT_APP_` prefix.
 - `JWT_SECRET`: a strong, persistent random secret.
 - `NODE_ENV`: `production`.
+- `FRONTEND_URL`: the frontend project's origin, for example `https://sociee.vercel.app`.
 
-The React app uses same-origin `/api` requests in production, so `REACT_APP_API_URL` is not required. Vercel Hobby limits function request/response payloads; media uploads are therefore limited to one file up to 3 MB at a time. Scheduled items become published when the public content API is requested after their scheduled time; Vercel Hobby does not run the backend's persistent minute timer.
+Vercel Hobby limits function request/response payloads; media uploads are therefore limited to one file up to 3 MB at a time. Scheduled items become published when the public content API is requested after their scheduled time; Vercel Hobby does not run the backend's persistent minute timer.
 
-In MongoDB Atlas, configure Network Access to allow the Vercel deployment to connect. After deploying, check `/api/health`, then register a creator account and test the public content, creator login, and moderation flows.
+In MongoDB Atlas, configure Network Access to allow the Vercel backend to connect. After deploying, check the backend project's `/api/health`, then register a creator account and test the public content, creator login, and moderation flows.
