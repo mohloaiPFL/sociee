@@ -1,70 +1,106 @@
-# Getting Started with Create React App
+# Sociee
 
-This project was bootstrapped with [Create React App](https://github.com/facebook/create-react-app).
+Sociee is a React viewer portal and an Express/MongoDB creator dashboard.
 
-## Available Scripts
+## Requirements
 
-In the project directory, you can run:
+- Node.js 20 or newer
+- MongoDB Atlas cluster (or local MongoDB for development)
+- A MongoDB database user with access to the application database
 
-### `npm start`
+## Local development
 
-Runs the app in the development mode.\
-Open [http://localhost:3000](http://localhost:3000) to view it in your browser.
+1. Install frontend dependencies from the project root:
 
-The page will reload when you make changes.\
-You may also see any lint errors in the console.
+   ```sh
+   npm install
+   ```
 
-### `npm test`
+2. Configure the backend:
 
-Launches the test runner in the interactive watch mode.\
-See the section about [running tests](https://facebook.github.io/create-react-app/docs/running-tests) for more information.
+   ```sh
+   cd backend
+   npm install
+   ```
 
-### `npm run build`
+   Copy `backend/.env.example` to `backend/.env`. Set `MONGODB_URI` to the MongoDB connection string and replace `JWT_SECRET` with a long random secret. Never commit `.env` files.
 
-Builds the app for production to the `build` folder.\
-It correctly bundles React in production mode and optimizes the build for the best performance.
+3. Start the API in `backend`:
 
-The build is minified and the filenames include the hashes.\
-Your app is ready to be deployed!
+   ```sh
+   npm start
+   ```
 
-See the section about [deployment](https://facebook.github.io/create-react-app/docs/deployment) for more information.
+   The API listens on port 5000 by default. Check `http://localhost:5000/health`.
 
-### `npm run eject`
+4. In a separate terminal, start the React app from the project root:
 
-**Note: this is a one-way operation. Once you `eject`, you can't go back!**
+   ```sh
+   npm start
+   ```
 
-If you aren't satisfied with the build tool and configuration choices, you can `eject` at any time. This command will remove the single build dependency from your project.
+   The frontend uses `http://localhost:5000/api` by default. To override this, copy `.env.example` to `.env.local` and set `REACT_APP_API_URL`.
 
-Instead, it will copy all the configuration files and the transitive dependencies (webpack, Babel, ESLint, etc) right into your project so you have full control over them. All of the commands except `eject` will still work, but they will point to the copied scripts so you can tweak them. At this point you're on your own.
+5. Open `/login` to sign in or choose **Create account** to register another creator. Use a unique email address and a password of at least 12 characters. Each creator account has its own private content-management dashboard; published content remains public in the viewer portal. If you forget your login, register another account to start a separate workspace. Password recovery by email is not configured.
 
-You don't have to ever use `eject`. The curated feature set is suitable for small and middle deployments, and you shouldn't feel obligated to use this feature. However we understand that this tool wouldn't be useful if you couldn't customize it when you are ready for it.
+Existing content is not deleted. On backend startup, unowned legacy content is assigned to the oldest creator account; new registrations get their own workspace. If you create a new account because you forgot the old credentials, the old account's drafts and management data remain attached to that old account and are not transferred.
 
-## Learn More
+## API overview
 
-You can learn more in the [Create React App documentation](https://facebook.github.io/create-react-app/docs/getting-started).
+Public:
 
-To learn React, check out the [React documentation](https://reactjs.org/).
+- `GET /health`
+- `GET /api/profile`
+- `GET /api/profile/:creatorId` (public creator profile and published-post engagement counts)
+- `GET /api/profile/me` and `PUT /api/profile/me` (view and update the signed-in creator profile)
+- `GET /api/contents`
+- `GET /api/contents/:id`
+- `POST /api/contents/:id/view`
+- `GET /api/media/:id` (view an uploaded public media file)
+- `GET /api/comments/:contentId`
+- `POST /api/comments`
+- `POST /api/likes`
+- `GET /api/auth/setup-status`
+- `POST /api/auth/register` (create a creator account)
+- `POST /api/auth/setup` (backward-compatible account registration route)
+- `POST /api/auth/login`
 
-### Code Splitting
+Creator-only (JWT bearer token required):
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/code-splitting](https://facebook.github.io/create-react-app/docs/code-splitting)
+- `GET /api/contents?all=true`
+- `POST /api/contents`
+- `POST /api/media/upload` (upload up to 10 device files, maximum 12 MB each)
+- `PUT /api/contents/:id`
+- `DELETE /api/contents/:id`
+- `GET /api/comments`
+- `PATCH /api/comments/:id`
+- `DELETE /api/comments/:id`
+- `GET /api/dashboard/stats`
 
-### Analyzing the Bundle Size
+Creators can upload up to 10 photos/videos/audio files with each content item from their device (12 MB per file); files are stored in MongoDB so they persist with the application data. Each creator can also save a profile name, bio, and uploaded profile picture from the dashboard; public posts show the creator name, profile picture, and publication time. Comments are submitted as pending and are only shown publicly after creator approval. Scheduled content is published automatically when its scheduled time arrives.
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/analyzing-the-bundle-size](https://facebook.github.io/create-react-app/docs/analyzing-the-bundle-size)
+Viewers can open a creator profile from a post or the navigation profile chip. The public profile displays the creator's profile details, published posts, and each post's likes and approved-comment count; opening a post provides the like and comment actions.
 
-### Making a Progressive Web App
+## Tests and production build
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/making-a-progressive-web-app](https://facebook.github.io/create-react-app/docs/making-a-progressive-web-app)
+From the project root:
 
-### Advanced Configuration
+```sh
+npm test -- --watchAll=false
+npm run build
+```
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/advanced-configuration](https://facebook.github.io/create-react-app/docs/advanced-configuration)
+Backend syntax can be checked with:
 
-### Deployment
+```sh
+cd backend
+node --check server.js
+```
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/deployment](https://facebook.github.io/create-react-app/docs/deployment)
+## Deployment
 
-### `npm run build` fails to minify
+Deploy the backend folder as a Node web service (for example on Render), with build command `npm install` and start command `npm start`. Configure `MONGODB_URI`, a strong persistent `JWT_SECRET`, `NODE_ENV=production`, `PORT` (if required by the host), and `FRONTEND_URL` with the deployed frontend origin. For multiple frontend domains, `FRONTEND_URL` accepts comma-separated origins.
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/troubleshooting#npm-run-build-fails-to-minify](https://facebook.github.io/create-react-app/docs/troubleshooting#npm-run-build-fails-to-minify)
+Deploy the React project root (for example to Vercel or Netlify), with build command `npm run build`, publish directory `build`, and `REACT_APP_API_URL` set to the deployed API base URL ending in `/api`. Configure the host to rewrite unknown routes to `index.html` so React Router routes load on refresh.
+
+After deployment, register a creator account through the public login page and test the public content, creator login, and moderation flows. A deployed URL and GitHub repository must be supplied separately; this project cannot publish itself without the relevant accounts and permissions.
